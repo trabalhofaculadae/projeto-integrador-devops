@@ -1,0 +1,130 @@
+# Pipeline de CI/CD do projeto.
+#
+#   git push ─▶ build ─▶ testes ─▶ build da imagem ─▶ teste da imagem ─▶ GHCR ─▶ deploy ─▶ verificação
+#
+# - Em Pull Requests roda só a parte de CI (build + testes), para validar antes do merge.
+# - Em push na main roda tudo, até o deploy em produção.
+# - O deploy só acontece depois que a variável DEPLOY_ENABLED=true for criada no repositório.
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-e-testes:
+    name: 1. Build e testes
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build do site
+        run: npm run build
+        env:
+          GIT_SHA: ${{ github.sha }}
+
+      - name: Testes automatizados
+        run: npm test
+
+  imagem:
+    name: 2. Imagem Docker
+    needs: build-e-testes
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.nomes.outputs.tag }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Definir nome e tag da imagem
+        id: nomes
+        run: |
+          echo "imagem=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build da imagem
+        run: |
+          docker build \
+            --build-arg GIT_SHA=${{ github.sha }} \
+            --label org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }} \
+            -t ${{ steps.nomes.outputs.imagem }}:${{ steps.nomes.outputs.tag }} \
+            -t ${{ steps.nomes.outputs.imagem }}:latest \
+            .
+
+      - name: Teste da imagem (smoke test)
+        run: bash scripts/smoke-test.sh ${{ steps.nomes.outputs.imagem }}:${{ steps.nomes.outputs.tag }} ${{ github.sha }}
+
+      - name: Login no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publicar a imagem no GHCR
+        run: |
+          docker push ${{ steps.nomes.outputs.imagem }}:${{ steps.nomes.outputs.tag }}
+          docker push ${{ steps.nomes.outputs.imagem }}:latest
+
+  deploy:
+    name: 3. Deploy em produção
+    needs: imagem
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: producao
+      url: https://${{ vars.DOMAIN }}
+    concurrency:
+      group: producao
+      cancel-in-progress: false
+    steps:
+      - name: Configurar o acesso SSH ao servidor
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Atualizar o servidor
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          TAG: ${{ needs.imagem.outputs.tag }}
+        run: ssh -i ~/.ssh/deploy_key "deploy@$SSH_HOST" "deploy $TAG"
+
+      - name: Verificar se a versão nova está no ar
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+        run: |
+          for tentativa in $(seq 1 12); do
+            if curl -fsS "https://$DOMAIN/version.json" | grep -q "$GITHUB_SHA"; then
+              echo "A versão $GITHUB_SHA está no ar em https://$DOMAIN"
+              exit 0
+            fi
+            echo "Tentativa $tentativa: ainda não apareceu, aguardando..."
+            sleep 5
+          done
+          echo "A versão nova não apareceu em https://$DOMAIN"
+          exit 1
