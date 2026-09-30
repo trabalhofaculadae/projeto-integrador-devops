@@ -1,0 +1,34 @@
+# Monitoramento externo: a cada 30 minutos, uma máquina do GitHub (fora do
+# nosso servidor) confere se a aplicação está respondendo. Se estiver fora do
+# ar, o workflow falha e o GitHub avisa por e-mail.
+#
+# Ele complementa o Uptime Kuma: o Kuma roda dentro do servidor e não consegue
+# avisar se o próprio servidor cair.
+
+name: Monitoramento externo
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    name: A aplicação está online?
+    if: vars.DOMAIN != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar /health
+        run: curl -fsS --max-time 15 --retry 2 --retry-delay 10 "https://${{ vars.DOMAIN }}/health"
+
+      - name: Verificar a página inicial
+        run: |
+          curl -fsS --max-time 15 -o /dev/null \
+            -w "Página inicial: HTTP %{http_code} em %{time_total}s\n" \
+            "https://${{ vars.DOMAIN }}/"
+
+      - name: Versão que está no ar
+        run: curl -fsS --max-time 15 "https://${{ vars.DOMAIN }}/version.json"
