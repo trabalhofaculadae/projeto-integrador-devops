@@ -7,12 +7,14 @@ Salve os prints na pasta `docs/evidencias/` e marque cada item quando estiver pr
 ## Links da entrega
 
 - [ ] Repositório (público): https://github.com/trabalhofaculadae/projeto-integrador-devops
-- [ ] Aplicação: https://⚠️
-- [ ] Monitoramento: https://monitor.⚠️
+- [ ] Aplicação: https://projetodevops.online
+- [ ] Monitoramento: https://monitor.projetodevops.online
 
 ## 1. Ambiente Cloud
 
-- [ ] Print do painel da Hostinger com a VPS (plano, IP, sistema operacional)
+- [ ] Print do console da AWS: EC2 → Instâncias → `projeto-devops` (tipo, IP, estado "Executando")
+- [ ] Print do Security Group `projeto-devops-sg` com as regras de entrada (22, 80, 443)
+- [ ] Print do Elastic IP `3.146.126.88` associado à instância
 - [ ] Saída destes comandos no servidor:
 
   ```bash
@@ -29,10 +31,10 @@ Salve os prints na pasta `docs/evidencias/` e marque cada item quando estiver pr
 
 ## 3. DNS e HTTPS
 
-- [ ] Saída de `nslookup SEU-DOMINIO` mostrando o IP da VPS
-- [ ] Print dos registros A no painel de DNS
+- [ ] Saída de `nslookup projetodevops.online` mostrando o IP da VPS
+- [ ] Print dos registros A no painel de DNS da Hostinger
 - [ ] Print do cadeado do navegador com o certificado válido (emitido pela Let's Encrypt)
-- [ ] Saída de `curl -I http://SEU-DOMINIO` mostrando o redirecionamento 308 para HTTPS
+- [ ] Saída de `curl -I http://projetodevops.online` mostrando o redirecionamento 308 para HTTPS
 
 ## 4. Pipeline CI/CD
 

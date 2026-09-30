@@ -4,8 +4,8 @@ Aplicação web da disciplina **DevOps e Computação em Nuvem** (Ciência da Co
 
 | | |
 |---|---|
-| **Aplicação** | https://SEU-DOMINIO ⚠️ *preencher* |
-| **Monitoramento** | https://monitor.SEU-DOMINIO ⚠️ *preencher* |
+| **Aplicação** | https://projetodevops.online |
+| **Monitoramento** | https://monitor.projetodevops.online |
 | **Pipeline** | aba **Actions** deste repositório |
 | **Documentação completa** | [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md) |
 
@@ -23,12 +23,12 @@ Aplicação web da disciplina **DevOps e Computação em Nuvem** (Ciência da Co
 
 ```
  Usuário
-    │  https://SEU-DOMINIO
+    │  https://projetodevops.online
     ▼
- DNS (registro A) ──▶ IP público da VPS
+ DNS (registro A) ──▶ 3.146.126.88 (IP fixo na AWS)
                           │
           ┌───────────────┴────────────────────────────┐
-          │ VPS Ubuntu · firewall: só 22, 80 e 443     │
+          │ AWS EC2 · Ubuntu 24.04 · só 22, 80 e 443   │
           │                                            │
           │   Caddy (portas 80/443, HTTPS automático)  │
           │     ├──▶ app  (Nginx + site)               │
@@ -57,7 +57,7 @@ git push → build → testes → build da imagem → teste da imagem → public
 
 ## Tecnologias
 
-Git e GitHub · GitHub Actions · Docker e Docker Compose · GitHub Container Registry · Nginx · Caddy (HTTPS com Let's Encrypt) · Uptime Kuma · Node.js (build e testes) · Ubuntu · UFW e Fail2ban
+AWS (EC2, Elastic IP, Security Group e Systems Manager) · Git e GitHub · GitHub Actions · Docker e Docker Compose · GitHub Container Registry · Nginx · Caddy (HTTPS com Let's Encrypt) · Uptime Kuma · Node.js (build e testes) · Ubuntu · UFW e Fail2ban
 
 ## Estrutura do projeto
 
@@ -107,7 +107,7 @@ npm test
 
 ## Segurança
 
-- O firewall deixa abertas só as portas **22 (SSH)**, **80 (HTTP)** e **443 (HTTPS)**. A aplicação e o monitoramento não publicam portas.
+- Dois firewalls, o **Security Group da AWS** e o **UFW** no servidor, deixam abertas só as portas **22 (SSH)**, **80 (HTTP)** e **443 (HTTPS)**. A aplicação e o monitoramento não publicam portas.
 - Senhas e chaves ficam nos **GitHub Secrets** e no `.env` do servidor, que **não vai para o Git**.
 - Todo acesso HTTP é redirecionado para **HTTPS**, com certificado válido da Let's Encrypt.
 - O painel de monitoramento exige login.

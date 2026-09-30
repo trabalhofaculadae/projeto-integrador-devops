@@ -2,8 +2,6 @@
 
 Disciplina: **DevOps e Computação em Nuvem** · Ciência da Computação · 2026.2 · Prof. Claudio Castelo
 
-> Os campos marcados com ⚠️ precisam ser preenchidos com os dados reais do nosso ambiente.
-
 **Sumário**
 
 1. [Descrição da aplicação](#1-descrição-da-aplicação)
@@ -61,14 +59,29 @@ Os dados da página (disciplina, professor e integrantes) ficam em um único arq
 
 | Item | Valor |
 |---|---|
-| Provedor | ⚠️ Hostinger (VPS) |
-| Plano | ⚠️ ex.: KVM 1 |
-| Sistema operacional | ⚠️ Ubuntu 24.04 LTS |
-| Recursos da máquina | ⚠️ vCPU: __ · RAM: __ GB · Disco: __ GB |
-| IP público | ⚠️ ___.___.___.___ |
-| Domínio da aplicação | ⚠️ |
-| Domínio do monitoramento | ⚠️ monitor.______ |
-| Localização do datacenter | ⚠️ |
+| Provedor | **AWS (Amazon Web Services)**, serviço **EC2**, no plano gratuito (créditos) |
+| Região | `us-east-2` (Ohio, EUA), zona `us-east-2a` |
+| Tipo de instância | `t3.micro`, com créditos de CPU no modo *standard* (sem cobrança extra por uso de CPU) |
+| Sistema operacional | Ubuntu 24.04 LTS (imagem oficial da Canonical) |
+| Recursos da máquina | 2 vCPU · 1 GB de RAM (+ 2 GB de swap) · 20 GB de SSD gp3 criptografado |
+| IP público | `3.146.126.88` (Elastic IP: fixo, não muda se o servidor reiniciar) |
+| Domínio da aplicação | `projetodevops.online` |
+| Domínio do monitoramento | `monitor.projetodevops.online` |
+| Registrador e DNS do domínio | Hostinger |
+| ID da instância | `i-074b32722d74b5b2c` |
+
+### Recursos criados na AWS
+
+| Recurso | Nome | Para que serve |
+|---|---|---|
+| Instância EC2 | `projeto-devops` | O servidor Ubuntu que roda os contêineres |
+| Elastic IP | `projeto-devops` | IP público fixo, para o DNS não quebrar |
+| Security Group | `projeto-devops-sg` | Firewall da AWS: libera só 22/tcp, 80/tcp, 443/tcp e 443/udp |
+| Função IAM | `projeto-devops-ec2` | Permite administrar o servidor pelo AWS Systems Manager, sem abrir portas extras |
+
+O servidor se configurou sozinho no primeiro boot: o **user data** da instância esperou o IP fixo, criou o swap e rodou o `scripts/setup-servidor.sh` com o domínio. Ninguém precisou digitar comandos nele.
+
+**Custo:** cerca de US$ 13 por mês (instância, IP e disco), pagos pelos créditos do plano gratuito da AWS (US$ 100, válidos até 30/03/2027).
 
 Para conferir os recursos direto no servidor:
 
@@ -92,9 +105,9 @@ curl -4 ifconfig.me   # IP público
 
 ### Forma de acesso ao ambiente
 
-- **Administração:** SSH, com `ssh root@IP_DO_SERVIDOR` (ou com o usuário administrativo do grupo).
+- **Administração:** pelo **AWS Systems Manager (Session Manager)**: no console da AWS, EC2 → Instâncias → `projeto-devops` → **Conectar** → **Session Manager**. Abre um terminal no navegador, sem senha e sem precisar de chave SSH.
 - **Deploy automático:** o GitHub Actions entra por SSH como o usuário `deploy`, com uma chave exclusiva. Essa chave só pode executar `scripts/deploy-remoto.sh` (opção `command=` no `authorized_keys`).
-- **Monitoramento:** pelo navegador, em `https://monitor.SEU-DOMINIO`, com usuário e senha.
+- **Monitoramento:** pelo navegador, em `https://monitor.projetodevops.online`, com usuário e senha.
 
 ---
 
@@ -166,12 +179,12 @@ docker compose -f docker-compose.local.yml up --build
 
 ### 5.2 No servidor (produção)
 
-1. Criar a VPS com **Ubuntu 24.04** e acessar por SSH como root.
+1. Criar o servidor com **Ubuntu 24.04** (no nosso caso, uma instância EC2 na AWS) e acessar como root (por SSH ou pelo Session Manager da AWS).
 2. Rodar o script de preparação, informando o domínio e o e-mail. Ele instala o Docker, liga o firewall, cria o usuário `deploy`, baixa o projeto, gera a chave do pipeline, preenche o `.env` e sobe o ambiente:
 
    ```bash
    curl -fsSL https://raw.githubusercontent.com/trabalhofaculadae/projeto-integrador-devops/main/scripts/setup-servidor.sh -o setup.sh
-   sudo bash setup.sh https://github.com/trabalhofaculadae/projeto-integrador-devops.git SEU-DOMINIO seu@email.com
+   sudo bash setup.sh https://github.com/trabalhofaculadae/projeto-integrador-devops.git projetodevops.online seu@email.com
    ```
 
 3. Cadastrar no GitHub os 3 Secrets que o script mostra no final (`SSH_HOST`, `SSH_KNOWN_HOSTS` e `SSH_PRIVATE_KEY`).
@@ -271,22 +284,20 @@ docker images                      # imagens baixadas no servidor
 3. O acesso chega ao **servidor** nas portas 80/443, onde o **Caddy** atende.
 4. O Caddy encaminha para o contêiner da **aplicação**.
 
-Registros criados no painel de DNS (⚠️ preencher com os dados reais):
+Registros criados no painel de DNS da **Hostinger** (registradora do domínio):
 
 | Tipo | Nome | Valor | Para quê |
 |---|---|---|---|
-| A | `@` (ou o subdomínio escolhido) | ⚠️ IP da VPS | Aplicação |
-| A | `monitor` | ⚠️ IP da VPS | Painel de monitoramento |
-
-Provedor do DNS: ⚠️ (ex.: Cloudflare, Hostinger ou Registro.br)
+| A | `@` | `3.146.126.88` | Aplicação (`projetodevops.online`) |
+| A | `monitor` | `3.146.126.88` | Painel de monitoramento (`monitor.projetodevops.online`) |
 
 > **Se o DNS estiver na Cloudflare:** deixe os registros como **"DNS only"** (nuvem cinza) para o Caddy conseguir emitir o certificado. Depois, se quiser usar o proxy da Cloudflare (nuvem laranja), configure o SSL/TLS da Cloudflare no modo **Full (strict)**.
 
 Como demonstrar que o DNS funciona:
 
 ```bash
-nslookup SEU-DOMINIO          # deve responder o IP da VPS
-dig +short SEU-DOMINIO A      # (Linux/Mac) mesmo teste, só com o IP
+nslookup projetodevops.online          # deve responder 3.146.126.88
+dig +short projetodevops.online A      # (Linux/Mac) mesmo teste, só com o IP
 ```
 
 ---
@@ -309,7 +320,7 @@ O HTTPS é feito pelo **Caddy**, com certificados **Let's Encrypt** emitidos e r
 Como verificar o certificado:
 
 ```bash
-curl -vI https://SEU-DOMINIO 2>&1 | grep -E "subject|issuer|expire"
+curl -vI https://projetodevops.online 2>&1 | grep -E "subject|issuer|expire"
 ```
 
 No navegador: clique no **cadeado** → "A conexão é segura" → "O certificado é válido".
@@ -372,23 +383,23 @@ Usamos **três camadas**:
 | Camada | Ferramenta | O que verifica |
 |---|---|---|
 | Dentro do contêiner | **HEALTHCHECK do Docker** | A cada 30 s acessa `/health`. O status aparece em `docker compose ps` |
-| No servidor | **Uptime Kuma** (`https://monitor.SEU-DOMINIO`) | Disponibilidade da aplicação, tempo de resposta, validade do certificado e histórico |
+| No servidor | **Uptime Kuma** (`https://monitor.projetodevops.online`) | Disponibilidade da aplicação, tempo de resposta, validade do certificado e histórico |
 | Fora do servidor | **GitHub Actions** (`monitoramento.yml`) | A cada 30 minutos, uma máquina externa acessa o site. Se falhar, o GitHub avisa por e-mail |
 
 ### Monitores configurados no Uptime Kuma
 
 | Monitor | Tipo | Alvo |
 |---|---|---|
-| Aplicação (HTTPS público) | HTTP(s) | `https://SEU-DOMINIO/health` |
+| Aplicação (HTTPS público) | HTTP(s) | `https://projetodevops.online/health` |
 | Contêiner app (rede interna) | HTTP(s) | `http://app/health` |
-| Página inicial | HTTP(s) - Palavra-chave | `https://SEU-DOMINIO` contendo `DevOps e Computação em Nuvem` |
+| Página inicial | HTTP(s) - Palavra-chave | `https://projetodevops.online` contendo `DevOps e Computação em Nuvem` |
 | Certificado HTTPS | (opção "Notificar expiração do certificado" no monitor HTTPS) | aviso antes de vencer |
 
 ### Respondendo às perguntas do monitoramento
 
 | Pergunta | Como responder |
 |---|---|
-| **A aplicação está online?** | Painel do Uptime Kuma, ou `curl https://SEU-DOMINIO/health` → `ok` |
+| **A aplicação está online?** | Painel do Uptime Kuma, ou `curl https://projetodevops.online/health` → `ok` |
 | **O servidor está funcionando?** | O workflow externo verde no GitHub, `ssh` respondendo, e `./scripts/status.sh` (uptime, memória e disco) |
 | **O contêiner está funcionando?** | `docker compose ps` mostra `Up (healthy)`, e o monitor "Contêiner app" no Kuma |
 | **Como identificar uma indisponibilidade?** | O Kuma marca o monitor em vermelho e envia um alerta. O workflow externo falha e o GitHub manda e-mail. O `status.sh` e o `docker compose logs` mostram a causa |
@@ -404,7 +415,8 @@ O script `scripts/status.sh` junta todas essas respostas num comando só.
 | **Versão nova com defeito** | O `deploy.sh` já volta sozinho para a anterior. Para voltar manualmente a qualquer versão: `sudo -u deploy ./scripts/deploy.sh sha-<commit antigo>` |
 | **Site fora do ar** | `./scripts/status.sh` → `docker compose ps` → `docker compose logs --tail 50 app caddy` → `docker compose up -d` |
 | **Contêiner parado ou unhealthy** | `docker compose restart app`. Se continuar, ver os logs e fazer rollback |
-| **Servidor reiniciou** | Nada: o Docker inicia com o sistema, e os serviços têm `restart: unless-stopped` |
+| **Servidor reiniciou** | Nada: o Docker inicia com o sistema, e os serviços têm `restart: unless-stopped`. O IP não muda, porque é um Elastic IP |
+| **Servidor travado** | No console da AWS: EC2 → Instâncias → `projeto-devops` → **Estado da instância → Reinicializar** |
 | **Certificado HTTPS com erro** | Conferir se o DNS aponta para a VPS e se as portas 80/443 estão abertas. Ver `docker compose logs caddy`. Depois, `docker compose restart caddy` |
 | **Disco cheio** | `df -h` e `docker system df`. Limpar imagens antigas: `docker image prune -a` (cuidado: remove as imagens usadas para rollback) |
 | **Pipeline sem conseguir entrar no servidor** | Conferir os Secrets `SSH_HOST`, `SSH_KNOWN_HOSTS` e `SSH_PRIVATE_KEY`. Fazer o deploy manual enquanto isso |
