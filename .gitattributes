@@ -1,0 +1,3 @@
+# Garante final de linha no padrão Linux (LF), mesmo editando no Windows.
+# Sem isso, scripts .sh e arquivos YAML podem quebrar no servidor.
+* text=auto eol=lf

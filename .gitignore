@@ -1,0 +1,10 @@
+# Segredos e configurações do servidor
+.env
+
+# Arquivos gerados
+app/dist/
+node_modules/
+*.log
+
+# Backups
+backups/
