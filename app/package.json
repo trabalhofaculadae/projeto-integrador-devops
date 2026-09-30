@@ -1,0 +1,13 @@
+{
+  "name": "projeto-integrador-devops",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicação web do Projeto Integrador de DevOps e Computação em Nuvem",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test tests/site.test.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
