@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{{PROJETO}} da disciplina {{DISCIPLINA}}.">
+  <title>{{DISCIPLINA}} · {{PROJETO}}</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topo">
+    <p class="sobretitulo">{{CURSO}} · {{INSTITUICAO}} · {{SEMESTRE}}</p>
+    <h1>{{DISCIPLINA}}</h1>
+    <p class="subtitulo">{{PROJETO}} · {{PROFESSOR}}</p>
+    <p class="status" id="status" data-estado="verificando">
+      <span class="ponto" aria-hidden="true"></span>
+      <span id="status-texto">Verificando a aplicação…</span>
+    </p>
+  </header>
+
+  <main>
+    <section aria-labelledby="titulo-integrantes">
+      <h2 id="titulo-integrantes">Integrantes do grupo</h2>
+      <ol class="integrantes">
+{{INTEGRANTES}}
+      </ol>
+    </section>
+
+    <section aria-labelledby="titulo-caminho">
+      <h2 id="titulo-caminho">Como esta página chega até você</h2>
+      <p>Cada alteração no código passa por um pipeline automático antes de chegar à produção:</p>
+      <ol class="pipeline">
+        <li><strong>Git push</strong><span>O código vai para o GitHub.</span></li>
+        <li><strong>Build</strong><span>O site é gerado a partir do código-fonte.</span></li>
+        <li><strong>Testes</strong><span>Testes automáticos validam o conteúdo.</span></li>
+        <li><strong>Imagem Docker</strong><span>A aplicação é empacotada e publicada no GHCR.</span></li>
+        <li><strong>Deploy</strong><span>O servidor baixa a imagem nova e troca o contêiner.</span></li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="titulo-arquitetura">
+      <h2 id="titulo-arquitetura">Onde ela roda</h2>
+      <p class="arquitetura">Domínio → DNS → servidor na nuvem → Caddy (HTTPS) → contêiner Nginx → esta página</p>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>Versão publicada: <code id="versao">{{COMMIT_CURTO}}</code> · build de <time id="data-build" datetime="{{DATA_BUILD}}">{{DATA_BUILD}}</time></p>
+  </footer>
+
+  <script src="/app.js" defer></script>
+</body>
+</html>
