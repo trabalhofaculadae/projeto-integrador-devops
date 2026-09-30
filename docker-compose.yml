@@ -1,0 +1,54 @@
+# Ambiente de produção (roda no servidor).
+# As configurações vêm do arquivo .env (veja .env.example).
+#
+#   Internet ──80/443──▶ caddy ──▶ app (Nginx com o site)
+#                          └─────▶ uptime-kuma (monitoramento)
+#
+# Só o Caddy publica portas. A aplicação e o monitoramento ficam na rede
+# interna "web" e não podem ser acessados diretamente de fora.
+
+name: projeto-devops
+
+services:
+  app:
+    image: ${IMAGE:?defina IMAGE no arquivo .env}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - web
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?defina DOMAIN no arquivo .env}
+      MONITOR_DOMAIN: ${MONITOR_DOMAIN:?defina MONITOR_DOMAIN no arquivo .env}
+      ACME_EMAIL: ${ACME_EMAIL:?defina ACME_EMAIL no arquivo .env}
+    volumes:
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+      - uptime-kuma
+    networks:
+      - web
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    volumes:
+      - kuma_data:/app/data
+    networks:
+      - web
+
+networks:
+  web:
+
+volumes:
+  caddy_data:     # certificados HTTPS (não apagar)
+  caddy_config:
+  kuma_data:      # configurações e histórico do monitoramento

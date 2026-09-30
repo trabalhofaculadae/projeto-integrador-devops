@@ -1,0 +1,27 @@
+# Caddy: proxy reverso com HTTPS automático.
+# Ele pede e renova sozinho os certificados SSL/TLS na Let's Encrypt
+# e redireciona todo acesso HTTP para HTTPS.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# Aplicação principal
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy app:80
+}
+
+# Painel de monitoramento (Uptime Kuma), protegido por login
+{$MONITOR_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy uptime-kuma:3001
+}
