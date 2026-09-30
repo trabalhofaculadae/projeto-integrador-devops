@@ -1,0 +1,11 @@
+# Ambiente local, para testar no seu computador:
+#   docker compose -f docker-compose.local.yml up --build
+# Depois abra http://localhost:8080
+
+name: projeto-devops-local
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
